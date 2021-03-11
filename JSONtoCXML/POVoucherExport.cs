@@ -35,17 +35,10 @@ namespace POVoucherExport
             var xml = "";
             using (var sww = new StringWriter())
             {
-                var xmlWriterSetting = new XmlWriterSettings();
-                xmlWriterSetting.Indent = true;
+                using XmlWriter writer = XmlWriter.Create(sww);
 
-                xmlWriterSetting.NewLineHandling = NewLineHandling.Entitize;
-
-                using (XmlWriter writer = XmlWriter.Create(sww))
-                {
-
-                    xsSubmit.Serialize(writer, mappedData);
-                    xml = sww.ToString(); // Your XML
-                }
+                xsSubmit.Serialize(writer, mappedData);
+                xml = sww.ToString(); // Your XML
             }
             return FormatXML(xml);
         }
