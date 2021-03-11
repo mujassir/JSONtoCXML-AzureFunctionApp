@@ -7,7 +7,8 @@ namespace JsonToXMLParser.BL
     class Row
     {
         public string rsId { get; set; }
-        public Data data { get; set; } = new Data();
+        public Dictionary<string, string> data { get; set; }
+        //public Data data { get; set; } = new Data();
 
         public List<Rows> children { get; set; }
 
