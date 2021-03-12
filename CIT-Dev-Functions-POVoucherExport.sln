@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31105.61
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "POVoucherExport", "JSONtoCXML\POVoucherExport.csproj", "{6413532C-3F6E-42FA-9A6D-FFB1DB57D289}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "POVoucherExport", "CIT-Dev-Functions-POVoucherExport\POVoucherExport.csproj", "{6413532C-3F6E-42FA-9A6D-FFB1DB57D289}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

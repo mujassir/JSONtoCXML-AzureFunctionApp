@@ -470,12 +470,12 @@ namespace JsonToXMLParser.BL.Xml
         public OrderRequest()
         {
             OrderRequestHeader = new OrderRequestHeader();
-            ItemOut = new ItemOut();
+            ItemOut = new List<ItemOut>();
         }
         [XmlElement(ElementName = "OrderRequestHeader")]
         public OrderRequestHeader OrderRequestHeader { get; set; }
         [XmlElement(ElementName = "ItemOut")]
-        public ItemOut ItemOut { get; set; }
+        public List<ItemOut> ItemOut { get; set; }
     }
 
     [XmlRoot(ElementName = "Request")]

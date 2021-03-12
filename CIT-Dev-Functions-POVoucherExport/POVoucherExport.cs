@@ -43,7 +43,7 @@ namespace POVoucherExport
             return FormatXML(xml);
         }
 
-       
+
         private static CXML MapCXMLData(Root data)
         {
             var cxml = new CXML();
@@ -56,6 +56,8 @@ namespace POVoucherExport
             // OrderRequestHeader - Request\OrderRequest\OrderRequestHeader
             cxml.Request.OrderRequest.OrderRequestHeader.OrderID = GetFieldValue(data, "PO_ID");
             cxml.Request.OrderRequest.OrderRequestHeader.OrderDate = GetFieldValue(data, "ORD_DT");
+            if (string.IsNullOrWhiteSpace(cxml.Request.OrderRequest.OrderRequestHeader.OrderDate))
+                cxml.Request.OrderRequest.OrderRequestHeader.OrderDate = GetFieldValue(data, "INVC_DT");
             cxml.Request.OrderRequest.OrderRequestHeader.Total.Money.Text = GetFieldValue(data, "TRN_PO_LN_TOT_AMT");
             cxml.Request.OrderRequest.OrderRequestHeader.Total.Money.Currency = GetFieldValue(data, "TRNS___CRNCY___CD");
 
@@ -93,25 +95,46 @@ namespace POVoucherExport
                 cxml.Request.OrderRequest.OrderRequestHeader.BillTo.Address.PostalAddress.Street.Add(GetFieldValue(data, "SUBK_BILL_LINE3_ADDR"));
 
             // ItemOut - Request\OrderRequest\ItemOut
-            cxml.Request.OrderRequest.ItemOut.LineNumber = GetFieldValue(data, "PO_LN_NO");
-            cxml.Request.OrderRequest.ItemOut.ItemDetail.Description.Text = GetFieldValue(data, "PO_LN_DESC");
-            cxml.Request.OrderRequest.ItemOut.ItemDetail.UnitOfMeasure = GetFieldValue(data, "PO_LN_UM_CD");
-            cxml.Request.OrderRequest.ItemOut.Quantity = GetFieldValue(data, "ORD_QTY");
-            
-            cxml.Request.OrderRequest.ItemOut.ItemDetail.UnitPrice.Money.Text = GetFieldValue(data, "TRN_GR_UN_CST_AMT");
-            if (!string.IsNullOrWhiteSpace(cxml.Request.OrderRequest.ItemOut.ItemDetail.UnitPrice.Money.Text))
-                cxml.Request.OrderRequest.ItemOut.ItemDetail.UnitPrice.Money.Text = GetFieldValue(data, "TRN_NET_UN_CST_AMT");
 
-            cxml.Request.OrderRequest.ItemOut.ItemDetail.Classification.Text = GetFieldValue(data, "COMM_CD");
-            
-            cxml.Request.OrderRequest.ItemOut.ItemID.SupplierPartID = GetFieldValue(data, "VEND_PART_ID");
-            if (!string.IsNullOrWhiteSpace(cxml.Request.OrderRequest.ItemOut.ItemID.SupplierPartID))
-                cxml.Request.OrderRequest.ItemOut.ItemID.SupplierPartID = GetFieldValue(data, "ITEM_ID");
+            if (data.document.rows != null && data.document.rows.Count > 0 
+                && data.document.rows[0].row.children != null && data.document.rows[0].row.children.Count > 0)
+            {
+                foreach (var child in data.document.rows[0].row.children)
+                {
+                    if (GetFieldValue(child, "PO_LN_NO") == null) continue;
+                    var itemOut = new ItemOut
+                    {
+                        LineNumber = GetFieldValue(child, "PO_LN_NO")
+                    };
+                    itemOut.ItemDetail.Description.Text = GetFieldValue(child, "PO_LN_DESC");
+                    if (string.IsNullOrWhiteSpace(itemOut.ItemDetail.Description.Text))
+                        itemOut.ItemDetail.Description.Text = GetFieldValue(child, "VCHR_LN_DESC");
 
-            cxml.Request.OrderRequest.ItemOut.Distribution.Accounting.Project = GetFieldValue(data, "PO_POLNACCT_PROJ_ID");
-            cxml.Request.OrderRequest.ItemOut.Distribution.Accounting.Department = GetFieldValue(data, "PO_POLNACCT_ACCT_ID");
-            cxml.Request.OrderRequest.ItemOut.Distribution.Accounting.Organization = GetFieldValue(data, "PO_POLNACCT_ORG_ID");
-            cxml.Request.OrderRequest.ItemOut.Distribution.Charge.Money.Text = GetFieldValue(data, "CST_AMT");
+                    itemOut.ItemDetail.UnitOfMeasure = GetFieldValue(child, "PO_LN_UM_CD");
+                    if (string.IsNullOrWhiteSpace(itemOut.ItemDetail.UnitOfMeasure))
+                        itemOut.ItemDetail.UnitOfMeasure = GetFieldValue(child, "UM_CD");
+
+                    itemOut.Quantity = GetFieldValue(child, "ORD_QTY");
+
+                    itemOut.ItemDetail.UnitPrice.Money.Text = GetFieldValue(child, "TRN_NET_UN_CST_AMT");
+                    itemOut.ItemDetail.UnitPrice.Money.Currency = GetFieldValue(data, "PAY_CRNCY_CD");
+                    itemOut.ItemDetail.Classification.Text = GetFieldValue(child, "COMM_CD");
+
+                    itemOut.ItemID.SupplierPartID = GetFieldValue(child, "VEND_PART_ID");
+                    if (string.IsNullOrWhiteSpace(itemOut.ItemID.SupplierPartID))
+                        itemOut.ItemID.SupplierPartID = GetFieldValue(child, "ITEM_ID");
+
+                    itemOut.Distribution.Accounting.Project = GetFieldValue(child, "POMPOVCH_VCHRLNACCT_PROJ_ID");
+                    itemOut.Distribution.Accounting.Department = GetFieldValue(child, "POMPOVCH_VCHRLNACCT_ACCT_ID");
+                    itemOut.Distribution.Accounting.Organization = GetFieldValue(child, "POMPOVCH_VCHRLNACCT_ORG_ID");
+
+                    itemOut.Distribution.Charge.Money.Text = GetFieldValue(child, "POMPOVCH_POLN_TRN_LN_CHG_CST_AMT");
+
+                    cxml.Request.OrderRequest.ItemOut.Add(itemOut);
+                }
+
+            }
+
 
             return cxml;
         }
@@ -135,18 +158,28 @@ namespace POVoucherExport
 
         private static string GetFieldValue(Rows rows, string fieldName)
         {
-            foreach (var item in rows.row.children)
+
+            if (rows.row.data.ContainsKey(fieldName))
             {
-                if (item.row.data.ContainsKey(fieldName))
+                var value = rows.row.data[fieldName];
+                if (!string.IsNullOrWhiteSpace(value)) return value;
+            }
+            if (rows.row.children != null && rows.row.children.Count > 0)
+            {
+                foreach (var item in rows.row.children)
                 {
-                    var fieldValue = item.row.data[fieldName];
-                    if (!string.IsNullOrWhiteSpace(fieldValue)) return fieldValue;
-                }
-                if (item.row.children != null && item.row.children.Count > 0)
-                {
-                    return GetFieldValue(item, fieldName);
+                    if (item.row.data.ContainsKey(fieldName))
+                    {
+                        var fieldValue = item.row.data[fieldName];
+                        if (!string.IsNullOrWhiteSpace(fieldValue)) return fieldValue;
+                    }
+                    if (item.row.children != null && item.row.children.Count > 0)
+                    {
+                        return GetFieldValue(item, fieldName);
+                    }
                 }
             }
+
             return null;
 
         }
